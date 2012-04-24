@@ -11,28 +11,34 @@ $Hour = date('H');
 $Minute = date('i');
 $ary_Youbi = array('日', '月', '火', '水', '木', '金', '土');
 $Youbi = $ary_Youbi[date('w')];
-$SVHost = "";	//接続先サーバー名
-$SVUser = "";	//ユーザー名
-$SVPass = "";	//パスワード
-$DBName = "";	//データベース名
-$tblName = "";		//テーブル名
 $Honbun = "";	//Text Postのbody部分
 $keyno = 0;
 
 try{
-	//漢字が文字化けするため事前に文字コードをUTF-8にする。そのうち直す
-	$sql = "SET NAMES utf8";
-
 	//コンシューマーキー、アクセストークンの取得
 	//DBに接続してリンクIDを受け取る
-	$con = @mysql_connect($SVHost,$SVUser,$SVPass);
+	$contents = @file('SVinfo.txt');
+	$i = 0;
+	foreach($contents as $line)
+	{
+		$SVinfo[$i] = str_replace(array("\r\n","\r","\n"),'',$line);
+		$i = $i + 1;
+	}
+	$con = @mysql_connect($SVinfo[0],$SVinfo[1],$SVinfo[2]);
 	if($con)
 	{
-		mysql_select_db($DBName,$con);	//DBへ移動
+		$contents = @file('DBinfo.txt');
+		$i = 0;
+		foreach($contents as $line)
+		{
+			$DBinfo[$i] = str_replace(array("\r\n","\r","\n"),'',$line);
+			$i = $i + 1;
+		}
+		mysql_select_db($DBinfo[0],$con);	//DBへ移動
 		for($keyno = 0;$keyno <= 2;$keyno++)
 		{
 			$sql = "SELECT accesstoken, at_secretkey
-					FROM  `tbl_AccessToken` 
+					FROM  $DBinfo[1] 
 					WHERE No = $keyno";
 			$rst = mysql_query($sql,$con);    //データベースへリクエストする
 			if($rst)
@@ -68,9 +74,11 @@ try{
 		{
 			if($con)
 			{
+				//漢字が文字化けするため事前に文字コードをUTF-8にする。そのうち直す
+				$sql = "SET NAMES utf8"
 				// 月、日をKEYに記念日を検索するSQL文を作成
 				$sql = "SELECT clm_Comment
-				FROM $tblName
+				FROM $DBinfo[2]
 				Where clm_Month = $Month And clm_Day = $Day";
 				$rst = mysql_query($sql,$con);    //データベースへリクエストする
 				If($rst)
