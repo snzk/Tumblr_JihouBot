@@ -5,6 +5,11 @@
 //PEARライブラリを使う
 include 'HTTP/OAuth/Consumer.php';
 
+$posttype = '';
+$posttext = 'text';
+$postphoto = 'photo';
+$photofldr = 'http://snzk.boo.jp/PEAR/PEAR/tumblr/';
+
 //日時と曜日の取得
 $Month = date('m');
 $Day = date('d');
@@ -26,7 +31,7 @@ try{
 		echo $SVinfo[$i]."<br />";
 		$i = $i + 1;
 	}
-	//DBに接続してリンクIDを受け取る
+	//DBに接続してリンクIDを受け取り、MySQLからコンシューマーキーを取得
 	$con = @mysql_connect($SVinfo[0],$SVinfo[1],$SVinfo[2]);
 	if($con)
 	{
@@ -58,11 +63,11 @@ try{
 	}
 
 //■主処理
-	//アクセストークンの取得
-	for($keyno = 1;$keyno <= 2;$keyno++)
+	//ここからアクセストークンの分ループさせる
+	for($keyno = 1;$keyno <= 3;$keyno++)
 	{
 		$sql = "SELECT accesstoken, at_secretkey
-				FROM  $DBinfo[1] 
+				FROM  $DBinfo[1]
 				WHERE No = $keyno";
 		$rst = mysql_query($sql,$con);    //データベースへリクエストする
 		if($rst)
@@ -84,13 +89,40 @@ try{
 		If($Hour == 00 or $Hour == 12)
 		{
 			$jihou = '○--------- '.$Month.'月'.$Day.'日('.$Youbi.')   '.$Hour.':'.$Minute.' ---------○';
-			//0時なら本文を出力する
-			If($Hour == 00)
+			If($con)
 			{
-				if($con)
+				//0時(日付の変わり目)と曜日によってpost内容を変える
+				//土曜日ならPhoto(土曜日)投稿
+				If($Hour == 00 and $Youbi == '土')
 				{
+					$posttype = $postphoto;
+					$photopath = $photofldr.'saturday.jpeg';
+					$params = array('type' => $posttype,
+									'source' => $photopath,
+									'caption' => $jihou);
+				}
+				elseif($Hour == 00 and $Youbi == '日')
+				{
+					$posttype = $postphoto;
+					$photopath = $photofldr.'sunday.jpg';
+					$params = array('type' => $posttype,
+									'source' => $photopath,
+									'caption' => $jihou);
+				}
+				elseif($Hour == 00 and $Youbi == '月')
+				{
+					$posttype = $postphoto;
+					$photopath = $photofldr.'bluemonday.jpeg';
+					$params = array('type' => $posttype,
+									'source' => $photopath,
+									'caption' => 'BlueMonday');
+				}
+				else
+				{
+/*
 					//漢字が文字化けするため事前に文字コードをUTF-8にする。そのうち直す
 					$sql = "SET NAMES utf8";
+*/
 					// 月、日をKEYに記念日を検索するSQL文を作成
 					$sql = "SELECT clm_Comment
 					FROM $DBinfo[2]
@@ -119,11 +151,13 @@ try{
 			$jihou = '○--------- '.$Hour.':'.$Minute.' ---------○';
 		}
 
-		// Textとして投稿する
-		$params = array('type'   => 'text',
-						'title'  => $jihou,
-						'body'	 => $Honbun);
-
+		//投稿パラメータを設定
+		if($posttype != 'photo')
+		{
+			$params = array('type'   => 'text',
+							'title'  => $jihou,
+							'body'	 => $Honbun);
+		}
 		$http_request = new HTTP_Request2();
 		$http_request->setConfig('ssl_verify_peer', false);	
 		$consumer = new HTTP_OAuth_Consumer($consumer_key, $consumer_secret);
